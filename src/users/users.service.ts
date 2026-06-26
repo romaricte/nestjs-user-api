@@ -7,6 +7,9 @@ import {
 import { CreateUserDto, UserRole } from './dto/create-user.dto';
 import { FindUsersQueryDto } from './dto/find-users-query.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { NotificationsService } from 'src/notifications/notifications.service';
+import { HashService } from 'src/shared/services/hash.service';
+import { AuditService } from 'src/audit/audit.service';
 
 type User = {
   id: number;
@@ -19,6 +22,13 @@ type User = {
 
 @Injectable()
 export class UsersService {
+constructor(
+    private readonly notificationsService: NotificationsService,
+      private readonly hashService: HashService,
+      private readonly auditService: AuditService
+
+){}
+
   private users: User[] = [
     {
       id: 1,
@@ -86,17 +96,25 @@ export class UsersService {
       throw new ConflictException('Cet email est déjà utilisé');
     }
 
+    const hashedPassword = createUserDto.password
+  ? this.hashService.hash(createUserDto.password)
+  : undefined;
+
     const newUser: User = {
       id: this.users.length + 1,
       name: createUserDto.name,
       email: createUserDto.email,
-      password: createUserDto.password,
+      password: hashedPassword,
       role: createUserDto.role ?? UserRole.USER,
       phone: createUserDto.phone,
     };
 
     this.users.push(newUser);
-
+this.auditService.log('CREATE', 'User', newUser.id);
+     this.notificationsService.sendWelcomeEmail(
+      newUser.email,
+      newUser.name,
+    );
     return newUser;
   }
 
@@ -114,13 +132,18 @@ export class UsersService {
     }
 
     Object.assign(user, updateUserDto);
-
+this.auditService.log('UPDATE', 'User', user.id);
     return user;
   }
 
   remove(id: number): void {
     const user = this.findOne(id);
-
     this.users = this.users.filter((item) => item.id !== user.id);
+    this.auditService.log('DELETE', 'User', user.id);
+
   }
+  
+  findByRole(role: UserRole): User[] {
+  return this.users.filter((user) => user.role === role);
+}
 }
