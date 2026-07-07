@@ -4,9 +4,10 @@ import { NotificationsModule } from 'src/notifications/notifications.module';
 import { UsersController } from './users.controller';
 import { SharedModule } from 'src/shared/shared.module';
 import { AuditModule } from 'src/audit/audit.module';
+import { PrismaModule } from 'src/prisma/prisma.module';
 
 @Module({
-    imports: [NotificationsModule,SharedModule,AuditModule],
+    imports: [NotificationsModule,SharedModule,AuditModule, PrismaModule],
     controllers :[UsersController],
     providers: [UsersService],
     exports: [UsersService],
