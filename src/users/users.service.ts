@@ -10,6 +10,8 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { NotificationsService } from 'src/notifications/notifications.service';
 import { HashService } from 'src/shared/services/hash.service';
 import { AuditService } from 'src/audit/audit.service';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { Prisma } from 'src/generated/prisma/client';
 
 type User = {
   id: number;
@@ -19,52 +21,73 @@ type User = {
   role: UserRole;
   phone?: string;
 };
-
+const userPublicSelect = {
+  id: true,
+  name: true,
+  email: true,
+  role: true,
+  phone: true,
+  createdAt: true,
+  updatedAt: true,
+} satisfies Prisma.UserSelect;
 @Injectable()
 export class UsersService {
 constructor(
+  private readonly prisma: PrismaService,
     private readonly notificationsService: NotificationsService,
       private readonly hashService: HashService,
       private readonly auditService: AuditService
 
 ){}
 
-  private users: User[] = [
-    {
-      id: 1,
-      name: 'Romaric',
-      email: 'romaric@example.com',
-      role: UserRole.USER,
-      phone: '699123456',
-    },
-    {
-      id: 2,
-      name: 'Sarah',
-      email: 'sarah@example.com',
-      role: UserRole.ADMIN,
-      phone: '677123456',
-    },
-  ];
+ 
 
-  findAll(query: FindUsersQueryDto) {
+ async findAll(query: FindUsersQueryDto) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
+    const skip = (page - 1) * limit;
 
-    let result = [...this.users];
-
-    if (query.search) {
-      result = result.filter((user) =>
-        user.name.toLowerCase().includes(query.search!.toLowerCase()),
-      );
-    }
-
-    if (query.role) {
-      result = result.filter((user) => user.role === query.role);
-    }
-
-    const total = result.length;
-    const start = (page - 1) * limit;
-    const data = result.slice(start, start + limit);
+    const where: Prisma.UserWhereInput = {
+      AND: [
+        query.search
+          ? {
+              OR: [
+                {
+                  name: {
+                    contains: query.search,
+                    mode: 'insensitive',
+                  },
+                },
+                {
+                  email: {
+                    contains: query.search,
+                    mode: 'insensitive',
+                  },
+                },
+              ],
+            }
+          : {},
+        query.role
+          ? {
+              role: query.role,
+            }
+          : {},
+      ],
+    };
+      const [data, total] = await this.prisma.$transaction([
+      this.prisma.user.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: {
+          createdAt: 'desc',
+        },
+        select: userPublicSelect,
+      }),
+      this.prisma.user.count({
+        where,
+      }),
+    ]);
 
     return {
       data,
@@ -76,9 +99,11 @@ constructor(
       },
     };
   }
-
-  findOne(id: number): User {
-    const user = this.users.find((user) => user.id === id);
+ async findOne(id: number) {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      select: userPublicSelect,
+    });
 
     if (!user) {
       throw new NotFoundException(`User avec l'id ${id} introuvable`);
@@ -87,63 +112,58 @@ constructor(
     return user;
   }
 
-  create(createUserDto: CreateUserDto): User {
-    const emailAlreadyExists = this.users.some(
-      (user) => user.email === createUserDto.email,
-    );
+  async create(createUserDto: CreateUserDto) {
+    try {
+      return await this.prisma.user.create({
+        data: {
+          name: createUserDto.name,
+          email: createUserDto.email,
+          password: createUserDto.password,
+          role: createUserDto.role,
+          phone: createUserDto.phone,
+        },
+        select: userPublicSelect,
+      });
+    } catch (error) {
+      this.handlePrismaError(error);
+    }
+  }
 
-    if (emailAlreadyExists) {
-      throw new ConflictException('Cet email est déjà utilisé');
+  async update(id: number, updateUserDto: UpdateUserDto) {
+    await this.findOne(id);
+
+    try {
+      return await this.prisma.user.update({
+        where: { id },
+        data: {
+          name: updateUserDto.name,
+          email: updateUserDto.email,
+          password: updateUserDto.password,
+          role: updateUserDto.role,
+          phone: updateUserDto.phone,
+        },
+      });
+    } catch (error) {
+      this.handlePrismaError(error);
+    }
+  }
+
+  async remove(id: number): Promise<void> {
+    await this.findOne(id);
+
+    await this.prisma.user.delete({
+      where: { id },
+    });
+  }
+
+  private handlePrismaError(error: unknown): never {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2002'
+    ) {
+      throw new ConflictException('Une donnée unique existe déjà');
     }
 
-    const hashedPassword = createUserDto.password
-  ? this.hashService.hash(createUserDto.password)
-  : undefined;
-
-    const newUser: User = {
-      id: this.users.length + 1,
-      name: createUserDto.name,
-      email: createUserDto.email,
-      password: hashedPassword,
-      role: createUserDto.role ?? UserRole.USER,
-      phone: createUserDto.phone,
-    };
-
-    this.users.push(newUser);
-this.auditService.log('CREATE', 'User', newUser.id);
-     this.notificationsService.sendWelcomeEmail(
-      newUser.email,
-      newUser.name,
-    );
-    return newUser;
+    throw error;
   }
-
-  update(id: number, updateUserDto: UpdateUserDto): User {
-    const user = this.findOne(id);
-
-    if (updateUserDto.email) {
-      const emailAlreadyExists = this.users.some(
-        (item) => item.email === updateUserDto.email && item.id !== id,
-      );
-
-      if (emailAlreadyExists) {
-        throw new ConflictException('Cet email est déjà utilisé');
-      }
-    }
-
-    Object.assign(user, updateUserDto);
-this.auditService.log('UPDATE', 'User', user.id);
-    return user;
-  }
-
-  remove(id: number): void {
-    const user = this.findOne(id);
-    this.users = this.users.filter((item) => item.id !== user.id);
-    this.auditService.log('DELETE', 'User', user.id);
-
-  }
-  
-  findByRole(role: UserRole): User[] {
-  return this.users.filter((user) => user.role === role);
-}
 }

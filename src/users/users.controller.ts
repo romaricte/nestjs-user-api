@@ -25,10 +25,10 @@ export class UsersController {
     return this.usersService.findAll(query);
   }
 
-@Get('by-role/:role')
-findByRole(@Param('role', ParseUserRolePipe) role: UserRole) {
-  return this.usersService.findByRole(role);
-}
+// @Get('by-role/:role')
+// findByRole(@Param('role', ParseUserRolePipe) role: UserRole) {
+//   return this.usersService.findByRole(role);
+// }
 
   @Get(':id')
   findOne(@Param('id', ParsePositiveIntPipe) id: number) {

@@ -10,8 +10,8 @@ import {
 } from 'class-validator';
 
 export enum UserRole {
-  USER = 'user',
-  ADMIN = 'admin',
+  USER = 'USER',
+  ADMIN = 'ADMIN',
 }
 
 export class CreateUserDto {
@@ -19,10 +19,10 @@ export class CreateUserDto {
   @IsNotEmpty({ message: 'Le nom est obligatoire' })
   @MinLength(2, { message: 'Le nom doit contenir au moins 2 caractères' })
   @MaxLength(50, { message: 'Le nom ne doit pas dépasser 50 caractères' })
-  name: string;
+  name!: string;
 
   @IsEmail({}, { message: 'Veuillez fournir une adresse email valide' })
-  email: string;
+  email!: string;
 
 
   @IsOptional()
