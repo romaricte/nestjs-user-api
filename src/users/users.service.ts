@@ -112,6 +112,19 @@ constructor(
     return user;
   }
 
+  async findByEmail(email: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+      select: userPublicSelect,
+    });
+
+    if (!user) {
+      throw new NotFoundException(`User avec l'email ${email} introuvable`);
+    }
+
+    return user;
+  }
+
   async create(createUserDto: CreateUserDto) {
     try {
       return await this.prisma.user.create({
