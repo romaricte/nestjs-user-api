@@ -29,7 +29,7 @@ export class CreateUserDto {
   @IsString()
   @MinLength(8)
   @MaxLength(100)
-  password?: string;
+  password!: string;
 
   @IsOptional()
   @IsEnum(UserRole)

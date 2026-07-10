@@ -7,9 +7,9 @@ import {
 import { CreateUserDto, UserRole } from './dto/create-user.dto';
 import { FindUsersQueryDto } from './dto/find-users-query.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { NotificationsService } from 'src/notifications/notifications.service';
+import { NotificationsService } from 'src/modules/notifications/notifications.service';
 import { HashService } from 'src/shared/services/hash.service';
-import { AuditService } from 'src/audit/audit.service';
+import { AuditService } from 'src/modules/audit/audit.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Prisma } from 'src/generated/prisma/client';
 
@@ -107,6 +107,19 @@ constructor(
 
     if (!user) {
       throw new NotFoundException(`User avec l'id ${id} introuvable`);
+    }
+
+    return user;
+  }
+
+  async findByEmail(email: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+      select: userPublicSelect,
+    });
+
+    if (!user) {
+      throw new NotFoundException(`User avec l'email ${email} introuvable`);
     }
 
     return user;
