@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
-import { CoreModule } from '../core/core.module';
-import { APP_CONFIG } from '../core/core.module';
+import { CoreModule } from '../../core/core.module';
+import { APP_CONFIG } from '../../core/core.module';
 import { ConsoleNotificationProvider } from './providers/console-notification.provider';
 import { EmailNotificationProvider } from './providers/email-notification.provider';
 import { NOTIFICATION_PROVIDER } from './providers/notification-provider.interface';

@@ -16,7 +16,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { UsersService } from './users.service';
 import { ParsePositiveIntPipe } from 'src/common/pipes/parse-positive-int.pipe';
 import { ParseUserRolePipe } from 'src/common/pipes/parse-user-role.pipe';
-import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
+import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
 
 @Controller('users')
 export class UsersController {

@@ -3,7 +3,7 @@ import {
   Injectable,
   PipeTransform,
 } from '@nestjs/common';
-import { UserRole } from 'src/users/dto/create-user.dto';
+import { UserRole } from 'src/modules/users/dto/create-user.dto';
 
 @Injectable()
 export class ParseUserRolePipe implements PipeTransform {
